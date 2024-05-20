@@ -4,7 +4,7 @@ use crate::{
     mm::edit_byte_buffer,
     task::{
         change_program_brk, current_user_token, exit_current_and_run_next, get_current_taskinfo,
-        suspend_current_and_run_next, TaskStatus,
+        mmap, munmap, suspend_current_and_run_next, TaskStatus,
     },
     timer::get_time_us,
 };
@@ -80,13 +80,24 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
+    trace!(
+        "kernel: sys_mmap start:{:#x} len:{} port:{}",
+        _start,
+        _len,
+        _port
+    );
+    if let Some(_) = mmap(_start, _len, _port) {
+        return 0;
+    }
     -1
 }
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
+    trace!("kernel: sys_munmap start:{:#x} len:{}", _start, _len);
+    if let Some(_) = munmap(_start, _len) {
+        return 0;
+    }
     -1
 }
 /// change data segment size

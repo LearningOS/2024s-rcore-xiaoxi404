@@ -104,6 +104,17 @@ impl TaskControlBlock {
             None
         }
     }
+    /// map new memory area
+    pub fn mmap(&mut self, start: usize, len: usize, port: usize) -> Option<()> {
+        if (port & !0x7 != 0) || (port & 0x7 == 0) {
+            return None;
+        }
+        self.memory_set.add_map_area(start, len, port)
+    }
+    /// unmap memory area
+    pub fn munmap(&mut self, start: usize, len: usize) -> Option<()> {
+        self.memory_set.remove_map_area(start, len)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]

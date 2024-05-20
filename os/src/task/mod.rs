@@ -178,6 +178,18 @@ impl TaskManager {
         let current = inner.current_task;
         inner.tasks[current].syscall_times[syscall_id] += 1;
     }
+    /// Mmap
+    pub fn task_mmap(&self, start: usize, len: usize, port: usize) -> Option<()> {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].mmap(start, len, port)
+    }
+    /// Munmap
+    pub fn task_munmap(&self, start: usize, len: usize) -> Option<()> {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].munmap(start, len)
+    }
 }
 
 /// Run the first task in task list.
@@ -236,4 +248,14 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// map new memory
+pub fn mmap(start: usize, len: usize, port: usize) -> Option<()> {
+    TASK_MANAGER.task_mmap(start, len, port)
+}
+
+/// unmap memory
+pub fn munmap(start: usize, len: usize) -> Option<()> {
+    TASK_MANAGER.task_munmap(start, len)
 }
