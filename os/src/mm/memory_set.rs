@@ -273,16 +273,7 @@ impl MemorySet {
             return None;
         }
         let end_va: VirtAddr = (start + len).into();
-        let mut perm = MapPermission::U;
-        if port & 0x1 == 0x1 {
-            perm |= MapPermission::R;
-        }
-        if port & 0x2 == 0x2 {
-            perm |= MapPermission::W;
-        }
-        if port & 0x4 == 0x4 {
-            perm |= MapPermission::X;
-        }
+        let perm = MapPermission::from_bits_truncate((port << 1) as u8) | MapPermission::U;
         let area = MapArea::new(start_va, end_va, MapType::Framed, perm);
         if self.areas.iter().any(|x| {
             x.vpn_range.get_start() < area.vpn_range.get_end()
