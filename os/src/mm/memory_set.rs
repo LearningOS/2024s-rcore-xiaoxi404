@@ -272,12 +272,21 @@ impl MemorySet {
         if !start_va.aligned() {
             return None;
         }
-        let end_va: VirtAddr = (start + len - PAGE_SIZE).into();
-        let perm: MapPermission = MapPermission::from_bits_truncate(port as u8) | MapPermission::U;
+        let end_va: VirtAddr = (start + len).into();
+        let mut perm = MapPermission::U;
+        if port & 0x1 == 0x1 {
+            perm |= MapPermission::R;
+        }
+        if port & 0x2 == 0x2 {
+            perm |= MapPermission::W;
+        }
+        if port & 0x4 == 0x4 {
+            perm |= MapPermission::X;
+        }
         let area = MapArea::new(start_va, end_va, MapType::Framed, perm);
         if self.areas.iter().any(|x| {
-            x.vpn_range.get_start() <= area.vpn_range.get_end()
-                && x.vpn_range.get_end() >= area.vpn_range.get_start()
+            x.vpn_range.get_start() < area.vpn_range.get_end()
+                && x.vpn_range.get_end() > area.vpn_range.get_start()
         }) {
             return None;
         }
@@ -290,7 +299,7 @@ impl MemorySet {
         if !start_va.aligned() {
             return None;
         }
-        let end_va: VirtAddr = (start + len - PAGE_SIZE).into();
+        let end_va: VirtAddr = (start + len).into();
         let area = MapArea::new(start_va, end_va, MapType::Framed, MapPermission::U);
         if let Some(v) = self.areas.iter().position(|x| {
             x.vpn_range.get_start() == area.vpn_range.get_start()
