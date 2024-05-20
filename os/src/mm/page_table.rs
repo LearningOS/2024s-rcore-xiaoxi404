@@ -194,11 +194,13 @@ pub fn edit_byte_buffer<T: Sized>(token: usize, ptr: *const T, val: &T) {
             let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
             for elem in pp.iter_mut().skip(start_va.page_offset()) {
                 *elem = val_slice[mem::size_of::<T>() - (end - start)];
+                start += 1;
             }
         } else {
             let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
-            for i in start_va.page_offset()..end - start {
-                pp[i] = val_slice[mem::size_of::<T>() - (end - start)];
+            for i in 0..end - start {
+                pp[i + start_va.page_offset()] = val_slice[mem::size_of::<T>() - (end - start)];
+                start += 1;
             }
         }
         start = end_va.into();
