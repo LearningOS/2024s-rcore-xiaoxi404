@@ -14,8 +14,10 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
+use crate::config::MAX_SYSCALL_NUM;
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_ms;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
@@ -80,6 +82,7 @@ impl TaskManager {
         let next_task = &mut inner.tasks[0];
         next_task.task_status = TaskStatus::Running;
         let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
+        next_task.time = get_time_ms();
         drop(inner);
         let mut _unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped manually
@@ -143,6 +146,9 @@ impl TaskManager {
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+            if inner.tasks[next].time == 0 {
+                inner.tasks[next].time = get_time_ms();
+            }
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
@@ -152,6 +158,25 @@ impl TaskManager {
         } else {
             panic!("All applications completed!");
         }
+    }
+
+    /// Get current task running time
+    pub fn get_current_taskinfo(&self) -> (usize, [u32; MAX_SYSCALL_NUM], TaskStatus) {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+
+        (
+            get_time_ms() - inner.tasks[current].time,
+            inner.tasks[current].syscall_times,
+            TaskStatus::Running,
+        )
+    }
+
+    /// Current task occur syscall
+    pub fn current_task_occur_syscall(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_times[syscall_id] += 1;
     }
 }
 
@@ -186,6 +211,16 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Get current task running time
+pub fn get_current_taskinfo() -> (usize, [u32; MAX_SYSCALL_NUM], TaskStatus) {
+    TASK_MANAGER.get_current_taskinfo()
+}
+
+/// Current task occur syscall
+pub fn current_task_occur_syscall(syscall_id: usize) {
+    TASK_MANAGER.current_task_occur_syscall(syscall_id)
 }
 
 /// Get the current 'Running' task's token.

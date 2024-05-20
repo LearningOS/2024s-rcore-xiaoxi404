@@ -1,6 +1,8 @@
 //! Implementation of [`PageTableEntry`] and [`PageTable`].
 
 use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+use crate::config::PAGE_SIZE;
+use _core::{mem, slice};
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
@@ -170,4 +172,35 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         start = end_va.into();
     }
     v
+}
+
+/// Translate&Edit a ptr's data through page table
+pub fn edit_byte_buffer<T: Sized>(token: usize, ptr: *const T, val: &T) {
+    let page_table = PageTable::from_token(token);
+    let mut start = ptr as usize;
+    let end = start + mem::size_of::<T>();
+    let val_slice: &[u8];
+    unsafe {
+        val_slice = slice::from_raw_parts((val as *const T) as *const u8, mem::size_of::<T>());
+    };
+    while start < end {
+        let start_va = VirtAddr::from(start);
+        let mut vpn = start_va.floor();
+        let ppn = page_table.translate(vpn).unwrap().ppn();
+        vpn.step();
+        let mut end_va: VirtAddr = vpn.into();
+        end_va = end_va.min(VirtAddr::from(end));
+        if end_va.page_offset() == 0 {
+            let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
+            for elem in pp.iter_mut().skip(start_va.page_offset()) {
+                *elem = val_slice[mem::size_of::<T>() - (end - start)];
+            }
+        } else {
+            let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
+            for i in start_va.page_offset()..end - start {
+                pp[i] = val_slice[mem::size_of::<T>() - (end - start)];
+            }
+        }
+        start = end_va.into();
+    }
 }
