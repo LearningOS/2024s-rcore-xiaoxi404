@@ -60,3 +60,8 @@ swap策略的PTE的存在位为0，PTE的保存PTE的存储设备扇区信息。
 双页表实现下，Trap时更换页表。
 
 单页表实现下，任务切换的时候更换页表
+
+# 参考文献
+- [RISC-V 异常处理流程介绍
+SHT 创作于 2022/10/20 ](https://tinylab.org/riscv-irq-pipeline-introduction/)
+- [rCore-Tutorial-Book-v3 3.6.0-alpha.1 文档 第4章](https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter4/index.html)
