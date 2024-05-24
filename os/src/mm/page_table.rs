@@ -178,10 +178,11 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
 pub fn edit_byte_buffer<T: Sized>(token: usize, ptr: *const T, val: &T) {
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;
-    let end = start + mem::size_of::<T>();
+    let size_t = mem::size_of::<T>();
+    let end = start + size_t;
     let val_slice: &[u8];
     unsafe {
-        val_slice = slice::from_raw_parts((val as *const T) as *const u8, mem::size_of::<T>());
+        val_slice = slice::from_raw_parts((val as *const T) as *const u8, size_t);
     };
     while start < end {
         let start_va = VirtAddr::from(start);
@@ -192,16 +193,14 @@ pub fn edit_byte_buffer<T: Sized>(token: usize, ptr: *const T, val: &T) {
         end_va = end_va.min(VirtAddr::from(end));
         if end_va.page_offset() == 0 {
             let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
-            for elem in pp.iter_mut().skip(start_va.page_offset()) {
-                *elem = val_slice[mem::size_of::<T>() - (end - start)];
-                start += 1;
-            }
+            pp[start_va.page_offset()..].copy_from_slice(
+                &val_slice[(size_t - (end - start))
+                    ..(size_t - (end - start) + (PAGE_SIZE - start_va.page_offset()))],
+            );
         } else {
             let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
-            for i in 0..end - start {
-                pp[i + start_va.page_offset()] = val_slice[mem::size_of::<T>() - (end - start)];
-                start += 1;
-            }
+            pp[start_va.page_offset()..end_va.page_offset()]
+                .copy_from_slice(&val_slice[(size_t - (end - start))..])
         }
         start = end_va.into();
     }
