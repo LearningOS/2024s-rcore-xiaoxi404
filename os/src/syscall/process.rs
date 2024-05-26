@@ -219,7 +219,7 @@ pub fn sys_set_priority(_prio: isize) -> isize {
         current_task().unwrap().pid.0
     );
     if _prio <= 1 {
-        return -1;
+        return _prio;
     }
     current_task_set_priority(_prio as usize);
     0
