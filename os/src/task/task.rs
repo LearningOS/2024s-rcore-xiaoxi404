@@ -1,7 +1,7 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT_BASE};
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM, PRIORITY, TRAP_CONTEXT_BASE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::timer::get_time_ms;
@@ -75,6 +75,12 @@ pub struct TaskControlBlockInner {
 
     /// Total running time of task
     pub time: usize,
+
+    /// Priority
+    pub priority: usize,
+
+    /// Stride
+    pub stride: usize,
 }
 
 impl TaskControlBlockInner {
@@ -91,6 +97,9 @@ impl TaskControlBlockInner {
     }
     pub fn is_zombie(&self) -> bool {
         self.get_status() == TaskStatus::Zombie
+    }
+    pub fn get_pass(&self) -> usize {
+        BIG_STRIDE / self.priority
     }
 }
 
@@ -127,6 +136,8 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                     syscall_times: [0; MAX_SYSCALL_NUM],
                     time: 0,
+                    priority: PRIORITY,
+                    stride: 0,
                 })
             },
         };
@@ -202,6 +213,8 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                     syscall_times: [0; MAX_SYSCALL_NUM],
                     time: 0,
+                    priority: PRIORITY,
+                    stride: 0,
                 })
             },
         });
@@ -310,6 +323,8 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                     syscall_times: [0; MAX_SYSCALL_NUM],
                     time: 0,
+                    priority: PRIORITY,
+                    stride: 0,
                 })
             },
         });
@@ -327,6 +342,16 @@ impl TaskControlBlock {
             trap_handler as usize,
         );
         task_control_block
+    }
+
+    /// get stride of process
+    pub fn get_stride(self: &Arc<Self>) -> usize {
+        self.inner_exclusive_access().stride
+    }
+
+    /// set priority of process
+    pub fn set_priority(self: &Arc<Self>, p: usize) {
+        self.inner_exclusive_access().priority = p;
     }
 }
 

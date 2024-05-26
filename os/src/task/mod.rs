@@ -45,6 +45,8 @@ pub fn suspend_current_and_run_next() {
     let task_cx_ptr = &mut task_inner.task_cx as *mut TaskContext;
     // Change status to Ready
     task_inner.task_status = TaskStatus::Ready;
+    // Add stride
+    task_inner.stride += task_inner.get_pass();
     drop(task_inner);
     // ---- release current PCB
 
@@ -119,6 +121,11 @@ pub fn current_task_mmap(start: usize, len: usize, port: usize) -> Option<()> {
 /// unmap memory
 pub fn current_task_munmap(start: usize, len: usize) -> Option<()> {
     current_task().unwrap().munmap(start, len)
+}
+
+/// set priority
+pub fn current_task_set_priority(prio: usize) {
+    current_task().unwrap().set_priority(prio)
 }
 
 lazy_static! {
