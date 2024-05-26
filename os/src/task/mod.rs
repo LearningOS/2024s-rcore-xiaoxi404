@@ -21,7 +21,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::loader::get_app_data_by_name;
+use crate::{config::MAX_SYSCALL_NUM, loader::get_app_data_by_name};
 use alloc::sync::Arc;
 use lazy_static::*;
 pub use manager::{fetch_task, TaskManager};
@@ -99,6 +99,26 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // we do not have to save task context
     let mut _unused = TaskContext::zero_init();
     schedule(&mut _unused as *mut _);
+}
+
+/// Get current task running time
+pub fn get_current_taskinfo() -> (usize, [u32; MAX_SYSCALL_NUM], TaskStatus) {
+    current_task().unwrap().get_taskinfo()
+}
+
+/// Current task occur syscall
+pub fn current_task_occur_syscall(syscall_id: usize) {
+    current_task().unwrap().occur_syscall(syscall_id)
+}
+
+/// map new memory
+pub fn current_task_mmap(start: usize, len: usize, port: usize) -> Option<()> {
+    current_task().unwrap().mmap(start, len, port)
+}
+
+/// unmap memory
+pub fn current_task_munmap(start: usize, len: usize) -> Option<()> {
+    current_task().unwrap().munmap(start, len)
 }
 
 lazy_static! {

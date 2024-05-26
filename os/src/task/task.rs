@@ -1,9 +1,10 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT_BASE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_ms;
 use crate::trap::{trap_handler, TrapContext};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
@@ -68,6 +69,12 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+    /// The syscal times
+    pub syscall_times: [u32; MAX_SYSCALL_NUM],
+
+    /// Total running time of task
+    pub time: usize,
 }
 
 impl TaskControlBlockInner {
@@ -118,6 +125,8 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+                    syscall_times: [0; MAX_SYSCALL_NUM],
+                    time: 0,
                 })
             },
         };
@@ -191,6 +200,8 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    syscall_times: [0; MAX_SYSCALL_NUM],
+                    time: 0,
                 })
             },
         });
@@ -235,6 +246,38 @@ impl TaskControlBlock {
         } else {
             None
         }
+    }
+
+    /// map new memory area
+    pub fn mmap(&self, start: usize, len: usize, port: usize) -> Option<()> {
+        if (port & !0x7 != 0) || (port & 0x7 == 0) {
+            return None;
+        }
+        self.inner_exclusive_access()
+            .memory_set
+            .add_map_area(start, len, port)
+    }
+
+    /// unmap memory area
+    pub fn munmap(&self, start: usize, len: usize) -> Option<()> {
+        self.inner_exclusive_access()
+            .memory_set
+            .remove_map_area(start, len)
+    }
+
+    /// Get task running time
+    pub fn get_taskinfo(&self) -> (usize, [u32; MAX_SYSCALL_NUM], TaskStatus) {
+        let inner = self.inner.exclusive_access();
+        (
+            get_time_ms() - inner.time,
+            inner.syscall_times,
+            TaskStatus::Running,
+        )
+    }
+
+    /// Task occur syscall
+    pub fn occur_syscall(&self, syscall_id: usize) {
+        self.inner.exclusive_access().syscall_times[syscall_id] += 1;
     }
 }
 

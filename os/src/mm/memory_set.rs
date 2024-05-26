@@ -72,6 +72,10 @@ impl MemorySet {
             self.areas.remove(idx);
         }
     }
+    fn remove(&mut self, mut map_area: MapArea, position: usize) {
+        map_area.unmap(&mut self.page_table);
+        self.areas.remove(position);
+    }
     /// Add a new MapArea into this MemorySet.
     /// Assuming that there are no conflicts in the virtual address
     /// space.
@@ -299,6 +303,43 @@ impl MemorySet {
         } else {
             false
         }
+    }
+
+    /// add map area
+    pub fn add_map_area(&mut self, start: usize, len: usize, port: usize) -> Option<()> {
+        let start_va: VirtAddr = start.into();
+        if !start_va.aligned() {
+            return None;
+        }
+        let end_va: VirtAddr = (start + len).into();
+        let perm = MapPermission::from_bits_truncate((port << 1) as u8) | MapPermission::U;
+        let area = MapArea::new(start_va, end_va, MapType::Framed, perm);
+        if self.areas.iter().any(|x| {
+            x.vpn_range.get_start() < area.vpn_range.get_end()
+                && x.vpn_range.get_end() > area.vpn_range.get_start()
+        }) {
+            return None;
+        }
+        self.push(area, None);
+        Some(())
+    }
+
+    /// remove map area
+    pub fn remove_map_area(&mut self, start: usize, len: usize) -> Option<()> {
+        let start_va: VirtAddr = start.into();
+        if !start_va.aligned() {
+            return None;
+        }
+        let end_va: VirtAddr = (start + len).into();
+        let area = MapArea::new(start_va, end_va, MapType::Framed, MapPermission::U);
+        if let Some(v) = self.areas.iter().position(|x| {
+            x.vpn_range.get_start() == area.vpn_range.get_start()
+                && x.vpn_range.get_end() == area.vpn_range.get_end()
+        }) {
+            self.remove(area, v);
+            return Some(());
+        }
+        None
     }
 }
 /// map area structure, controls a contiguous piece of virtual memory
