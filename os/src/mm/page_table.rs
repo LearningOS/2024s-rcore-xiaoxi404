@@ -191,14 +191,13 @@ pub fn edit_byte_buffer<T: Sized>(token: usize, ptr: *const T, val: &T) {
         vpn.step();
         let mut end_va: VirtAddr = vpn.into();
         end_va = end_va.min(VirtAddr::from(end));
+        let pp = ppn.get_bytes_array();
         if end_va.page_offset() == 0 {
-            let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
             pp[start_va.page_offset()..].copy_from_slice(
                 &val_slice[(size_t - (end - start))
                     ..(size_t - (end - start) + (PAGE_SIZE - start_va.page_offset()))],
             );
         } else {
-            let pp: &mut [u8; PAGE_SIZE] = ppn.get_mut();
             pp[start_va.page_offset()..end_va.page_offset()]
                 .copy_from_slice(&val_slice[(size_t - (end - start))..])
         }
