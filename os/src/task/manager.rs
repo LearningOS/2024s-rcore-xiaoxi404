@@ -19,7 +19,14 @@ impl TaskManager {
     }
     /// Add process back to ready queue
     pub fn add(&mut self, task: Arc<TaskControlBlock>) {
-        self.ready_queue.push_back(task);
+        self.ready_queue.push_front(task);
+        for i in 1..self.ready_queue.len() {
+            if self.ready_queue[i - 1].get_stride() > self.ready_queue[i].get_stride() {
+                self.ready_queue.swap(i - 1, i);
+            } else {
+                break;
+            }
+        }
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {

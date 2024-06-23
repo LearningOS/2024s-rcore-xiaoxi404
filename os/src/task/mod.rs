@@ -22,7 +22,10 @@ mod switch;
 #[allow(rustdoc::private_intra_doc_links)]
 mod task;
 
-use crate::fs::{open_file, OpenFlags};
+use crate::{
+    config::MAX_SYSCALL_NUM,
+    fs::{open_file, OpenFlags},
+};
 use alloc::sync::Arc;
 pub use context::TaskContext;
 use lazy_static::*;
@@ -46,6 +49,8 @@ pub fn suspend_current_and_run_next() {
     let task_cx_ptr = &mut task_inner.task_cx as *mut TaskContext;
     // Change status to Ready
     task_inner.task_status = TaskStatus::Ready;
+    // Add stride
+    task_inner.stride += task_inner.get_pass();
     drop(task_inner);
     // ---- release current PCB
 
@@ -102,6 +107,31 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // we do not have to save task context
     let mut _unused = TaskContext::zero_init();
     schedule(&mut _unused as *mut _);
+}
+
+/// Get current task running time
+pub fn get_current_taskinfo() -> (usize, [u32; MAX_SYSCALL_NUM], TaskStatus) {
+    current_task().unwrap().get_taskinfo()
+}
+
+/// Current task occur syscall
+pub fn current_task_occur_syscall(syscall_id: usize) {
+    current_task().unwrap().occur_syscall(syscall_id)
+}
+
+/// map new memory
+pub fn current_task_mmap(start: usize, len: usize, port: usize) -> Option<()> {
+    current_task().unwrap().mmap(start, len, port)
+}
+
+/// unmap memory
+pub fn current_task_munmap(start: usize, len: usize) -> Option<()> {
+    current_task().unwrap().munmap(start, len)
+}
+
+/// set priority
+pub fn current_task_set_priority(prio: usize) {
+    current_task().unwrap().set_priority(prio)
 }
 
 lazy_static! {
