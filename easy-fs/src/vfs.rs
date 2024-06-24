@@ -90,6 +90,21 @@ impl Inode {
         }
         disk_inode.increase_size(new_size, v, &self.block_device);
     }
+    /// Decrease the size of a disk inode
+    fn decrease_size(
+        &self,
+        new_size: u32,
+        disk_inode: &mut DiskInode,
+        fs: &mut MutexGuard<EasyFileSystem>,
+    ) {
+        if new_size > disk_inode.size {
+            return;
+        }
+        let unneed = disk_inode.blocks_num_unneeded(new_size) as usize;
+        let v = disk_inode.decrease_size(new_size, &self.block_device);
+        assert!(v.len() == unneed, "{} {}", v.len(), unneed);
+        v.into_iter().for_each(|x| fs.dealloc_data(x));
+    }
     /// Create inode under current inode by name
     pub fn create(&self, name: &str) -> Option<Arc<Inode>> {
         let mut fs = self.fs.lock();
@@ -299,13 +314,16 @@ impl Inode {
                             DirEntry::empty().as_bytes_mut(),
                             &self.block_device,
                         );
-                        root_inode.size = ((file_count - 1) * DIRENT_SZ) as u32;
+                        self.decrease_size(
+                            ((file_count - 1) * DIRENT_SZ) as u32,
+                            root_inode,
+                            &mut fs,
+                        );
                         break;
                     }
                 }
             });
             block_cache_sync_all();
-            // return inode
             return Some(());
         }
         None
