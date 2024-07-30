@@ -14,7 +14,6 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
-
 /// Process Control Block
 pub struct ProcessControlBlock {
     /// immutable
@@ -49,6 +48,20 @@ pub struct ProcessControlBlockInner {
     pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+    /// is enable deadlock detect
+    pub is_enable_deadlock_detect: bool,
+    /// mutex available list
+    pub mutex_available_vec: Vec<Option<usize>>,
+    /// mutex allocation matrix
+    pub mutex_allocation_matrix: Vec<Option<Vec<Option<usize>>>>,
+    /// mutex request matrix
+    pub mutex_request_matrix: Vec<Option<Vec<Option<usize>>>>,
+    /// semaphore available list
+    pub semaphore_available_vec: Vec<Option<usize>>,
+    /// semaphore allocation matrix
+    pub semaphore_allocation_matrix: Vec<Option<Vec<Option<usize>>>>,
+    /// semaphore request matrix
+    pub semaphore_request_matrix: Vec<Option<Vec<Option<usize>>>>,
 }
 
 impl ProcessControlBlockInner {
@@ -119,6 +132,13 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    is_enable_deadlock_detect: false,
+                    mutex_available_vec: Vec::new(),
+                    mutex_allocation_matrix: vec![Some(Vec::new())],
+                    mutex_request_matrix: vec![Some(Vec::new())],
+                    semaphore_available_vec: Vec::new(),
+                    semaphore_allocation_matrix: vec![Some(Vec::new())],
+                    semaphore_request_matrix: vec![Some(Vec::new())],
                 })
             },
         });
@@ -245,6 +265,13 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    is_enable_deadlock_detect: false,
+                    mutex_available_vec: Vec::new(),
+                    mutex_allocation_matrix: vec![Some(Vec::new())],
+                    mutex_request_matrix: vec![Some(Vec::new())],
+                    semaphore_available_vec: Vec::new(),
+                    semaphore_allocation_matrix: vec![Some(Vec::new())],
+                    semaphore_request_matrix: vec![Some(Vec::new())],
                 })
             },
         });

@@ -36,11 +36,56 @@ pub fn sys_thread_create(entry: usize, arg: usize) -> isize {
     let new_task_tid = new_task_res.tid;
     let mut process_inner = process.inner_exclusive_access();
     // add new thread to current process
-    let tasks = &mut process_inner.tasks;
-    while tasks.len() < new_task_tid + 1 {
-        tasks.push(None);
+    //let tasks = &mut process_inner.tasks;
+    while process_inner.tasks.len() < new_task_tid + 1 {
+        process_inner.tasks.push(None);
+        process_inner.mutex_allocation_matrix.push(None);
+        process_inner.mutex_request_matrix.push(None);
+        process_inner.semaphore_allocation_matrix.push(None);
+        process_inner.semaphore_request_matrix.push(None);
     }
-    tasks[new_task_tid] = Some(Arc::clone(&new_task));
+    process_inner.tasks[new_task_tid] = Some(Arc::clone(&new_task));
+    process_inner.mutex_allocation_matrix[new_task_tid] = Some(
+        process_inner
+            .mutex_list
+            .iter()
+            .map(|x| match *x {
+                Some(_) => Some(0),
+                None => None,
+            })
+            .collect(),
+    );
+    process_inner.mutex_request_matrix[new_task_tid] = Some(
+        process_inner
+            .mutex_list
+            .iter()
+            .map(|x| match *x {
+                Some(_) => Some(0),
+                None => None,
+            })
+            .collect(),
+    );
+    process_inner.semaphore_allocation_matrix[new_task_tid] = Some(
+        process_inner
+            .semaphore_list
+            .iter()
+            .map(|x| match *x {
+                Some(_) => Some(0),
+                None => None,
+            })
+            .collect(),
+    );
+    process_inner.semaphore_request_matrix[new_task_tid] = Some(
+        process_inner
+            .semaphore_list
+            .iter()
+            .map(|x| match *x {
+                Some(_) => Some(0),
+                None => None,
+            })
+            .collect(),
+    );
+
     let new_task_trap_cx = new_task_inner.get_trap_cx();
     *new_task_trap_cx = TrapContext::app_init_context(
         entry,
@@ -112,6 +157,10 @@ pub fn sys_waittid(tid: usize) -> i32 {
     if let Some(exit_code) = exit_code {
         // dealloc the exited thread
         process_inner.tasks[tid] = None;
+        process_inner.mutex_allocation_matrix[tid] = None;
+        process_inner.mutex_request_matrix[tid] = None;
+        process_inner.semaphore_allocation_matrix[tid] = None;
+        process_inner.semaphore_request_matrix[tid] = None;
         exit_code
     } else {
         // waited thread has not exited
